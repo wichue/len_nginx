@@ -48,6 +48,14 @@ ngx_calloc(size_t size, ngx_log_t *log)
 
 #if (NGX_HAVE_POSIX_MEMALIGN)
 
+/**
+ * @brief 分配自动对齐的内存，以提升性能
+ * 
+ * @param alignment 内存对齐的标准，即2的幂，并且必须是void*的整数倍
+ * @param size      所需内存的大小
+ * @param log       日志
+ * @return void*    分配的内存
+ */
 void *
 ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
