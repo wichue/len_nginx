@@ -242,7 +242,13 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     return m;
 }
 
-
+/**
+ * @brief 当分配的内存块大小超出pool->max限制的时候,需要分配在pool->large上
+ * 
+ * @param pool      内存池主节点
+ * @param size      申请的内存大小
+ * @return void*    分配的内存
+ */
 static void *
 ngx_palloc_large(ngx_pool_t *pool, size_t size)
 {
@@ -256,7 +262,7 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
     }
 
     n = 0;
-
+    // 去pool->large链表上查询是否有NULL的，只在链表上往下查询3次，否则就重新分配一个
     for (large = pool->large; large; large = large->next) {
         if (large->alloc == NULL) {
             large->alloc = p;
@@ -273,7 +279,7 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
         ngx_free(p);
         return NULL;
     }
-
+    //新分配的large结构体是挂在链表首部的
     large->alloc = p;
     large->next = pool->large;
     pool->large = large;
@@ -306,7 +312,13 @@ ngx_pmemalign(ngx_pool_t *pool, size_t size, size_t alignment)
     return p;
 }
 
-
+/**
+ * @brief 大内存块释放  pool->large
+ * 
+ * @param pool  内存池主节点
+ * @param p     要释放的内存地址
+ * @return ngx_int_t 
+ */
 ngx_int_t
 ngx_pfree(ngx_pool_t *pool, void *p)
 {
@@ -340,17 +352,24 @@ ngx_pcalloc(ngx_pool_t *pool, size_t size)
     return p;
 }
 
-
+/**
+ * @brief 分配一个可以调用回调函数清理内存块的内存，内存块仍旧在p->d或p->large上。
+ *        p->cleanup链表记录着需要释放的资源，可以自定义如何释放，比如关闭文件等。
+ * 
+ * @param p     内存池主节点
+ * @param size  请求分配的内存大小
+ * @return ngx_pool_cleanup_t* 
+ */
 ngx_pool_cleanup_t *
 ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
 {
     ngx_pool_cleanup_t  *c;
-
+    // 分配一个 ngx_pool_cleanup_t 结构体
     c = ngx_palloc(p, sizeof(ngx_pool_cleanup_t));
     if (c == NULL) {
         return NULL;
     }
-
+    // 从pool->d或pool->large分配一个内存块
     if (size) {
         c->data = ngx_palloc(p, size);
         if (c->data == NULL) {
@@ -360,7 +379,7 @@ ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
     } else {
         c->data = NULL;
     }
-
+    // handler为回调函数
     c->handler = NULL;
     c->next = p->cleanup;
 
@@ -371,7 +390,12 @@ ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
     return c;
 }
 
-
+/**
+ * @brief 清除 p->cleanup 链表上的内存块
+ * 
+ * @param p     内存池主节点
+ * @param fd    文件描述符
+ */
 void
 ngx_pool_run_cleanup_file(ngx_pool_t *p, ngx_fd_t fd)
 {
@@ -392,7 +416,11 @@ ngx_pool_run_cleanup_file(ngx_pool_t *p, ngx_fd_t fd)
     }
 }
 
-
+/**
+ * @brief 关闭文件回调函数
+ * 
+ * @param data 
+ */
 void
 ngx_pool_cleanup_file(void *data)
 {
@@ -407,7 +435,11 @@ ngx_pool_cleanup_file(void *data)
     }
 }
 
-
+/**
+ * @brief 删除文件回调函数
+ * 
+ * @param data 
+ */
 void
 ngx_pool_delete_file(void *data)
 {

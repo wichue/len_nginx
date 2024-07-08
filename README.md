@@ -13,10 +13,10 @@ make install
 ```
 
 # 报错解决
-`
+```shell
 the HTTP rewrite module requires the PCRE library
 sudo apt-get install libpcre3 libpcre3-dev
-`
+```
 
 
 # Makefile 说明
